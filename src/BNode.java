@@ -177,6 +177,7 @@ public class BNode implements BNodeInterface {
         this.numOfBlocks += 1;
         y.numOfBlocks = t - 1;
         y.blocksList = new ArrayList<Block>(y.blocksList.subList(0, t - 1));
+        if(y.childrenList.size()>=t)y.childrenList = new ArrayList<BNode>(y.childrenList.subList(0, t));
 
     }
 
@@ -221,32 +222,31 @@ public class BNode implements BNodeInterface {
 
     @Override
     public MerkleBNode createHashNode() {
-
-        return new MerkleBNode(calcHash(),this.isLeaf,createMerkleChildren());
-
-
-    }
-
-    private byte[] calcHash()
-    {
-        ArrayList<byte[]> toHash = new ArrayList<>();
-        for (int i=0;i<childrenList.size();i++)
-        {
-            if(!isLeaf())toHash.add(childrenList.get(i).calcHash());
-            toHash.add(blocksList.get(i).getData());
+        byte[] data = null;
+        ArrayList<MerkleBNode> MerkleChildrenList = new ArrayList<>();
+        if (isLeaf) {
+            ArrayList<byte[]> dataList = new ArrayList<>();
+            for (int j = 0; j < numOfBlocks; j++) {
+                byte[] block = blocksList.get(j).getData();
+                dataList.add(block);
+            }
+            data = HashUtils.sha1Hash(dataList);
+        } else {
+            for (int i = 0; i < numOfBlocks + 1; i++)
+                MerkleChildrenList.add(childrenList.get(i).createHashNode());
+            ArrayList<byte[]> dataList = new ArrayList<>();
+            dataList.add(MerkleChildrenList.get(0).getHashValue());
+            for (int i = 0; i < numOfBlocks; i++) {
+                dataList.add(blocksList.get(i).getData());
+                dataList.add(MerkleChildrenList.get(i + 1).getHashValue());
+            }
+            data = HashUtils.sha1Hash(dataList);
         }
-        return HashUtils.sha1Hash(toHash);
-
+        return new MerkleBNode(data, isLeaf, MerkleChildrenList);
     }
-    private ArrayList<MerkleBNode> createMerkleChildren()
-    {
-        ArrayList<MerkleBNode> merkleChildren = new ArrayList<>();
-        for (BNode child:childrenList)
-            merkleChildren.add(child.createHashNode());
 
-        return merkleChildren;
 
-    }
+
 
 
 
